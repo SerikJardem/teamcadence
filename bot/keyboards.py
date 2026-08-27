@@ -1,8 +1,7 @@
 """Инлайн-клавиатуры и типизированные callback_data (влезают в лимит 64 байта).
 gid (тенант) кодируется в callback_data — так тенант читается даже из лички."""
 from aiogram.filters.callback_data import CallbackData
-from aiogram.types import (InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton,
-                           ReplyKeyboardMarkup)
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 
 from . import config
 

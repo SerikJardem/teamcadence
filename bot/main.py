@@ -5,7 +5,7 @@ import sys
 
 from aiogram import Bot, Dispatcher
 
-from . import config, ddb
+from . import config
 from .handlers import router
 from .scheduler import setup_scheduler
 

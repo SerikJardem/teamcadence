@@ -6,7 +6,6 @@ import pytest
 
 from bot import config, handlers, scheduler
 
-
 GID = -1003971694622
 
 

@@ -9,7 +9,21 @@
 - хранит пользователей, настройки, задачи, reminders и aura ledger;
 - поддерживает отдельные Telegram topics `board`, `work`, `calls`.
 
-## Текущий production baseline
+## Архитектура GCP
+
+Один Docker-образ разворачивается в три изолированных Cloud Run сервиса:
+
+| Сервис | Назначение | Вызов |
+|---|---|---|
+| `teamcadence-webhook` | Telegram updates и команды | Telegram webhook + secret header |
+| `teamcadence-reminder` | Мемы, напоминания, задачи и статусы | Cloud Scheduler каждую минуту |
+| `teamcadence-sync` | Google Calendar → задачи/созвоны | Cloud Scheduler каждые 2 минуты |
+
+Состояние хранится в именованной Firestore DB `teamcadence`; секреты — в Secret
+Manager. Google Sheets и Calendar остаются внешними рабочими интерфейсами. AWS
+Lambda/DynamoDB оставлены только как обратимый источник миграции и rollback-контур.
+
+## Исходный production baseline
 
 На момент переноса исходников production работает в AWS `eu-west-1`:
 
@@ -47,10 +61,14 @@ bot/
   handlers.py          Telegram-команды и callback handlers
   scheduler.py         reminders, status prompts и Calendar sync
   sheets.py            Tracker-HostAI в Google Sheets
-  ddb.py               AWS DynamoDB storage
+  ddb.py               выбор storage backend
+  storage/              AWS DynamoDB и GCP Firestore adapters
+  cloudrun.py           Cloud Run HTTP entrypoint
   lambda_*.py          AWS Lambda entrypoints
+deploy/                 bootstrap, deploy, cutover и rollback
+scripts/                экспорт, импорт и сверка production state
 tests/                  регрессионные тесты пользовательских flows
 docs/                   архитектура и runbooks
 ```
 
-GCP-реализация будет добавлена отдельным коммитом поверх этого baseline.
+Полный порядок миграции — в `docs/GCP_MIGRATION_RUNBOOK.md`.

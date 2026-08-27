@@ -7,8 +7,7 @@ from zoneinfo import ZoneInfo
 from aiogram import Bot
 
 from . import awssecrets, config, ddb, sheets
-from .scheduler import (scan_cadence, scan_daily_tasks, scan_df_reminders,
-                        scan_due_reminders, scan_pushes)
+from .scheduler import scan_cadence, scan_daily_tasks, scan_df_reminders, scan_due_reminders, scan_pushes
 
 logging.getLogger().setLevel(logging.INFO)
 awssecrets.load_from_ssm()

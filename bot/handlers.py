@@ -8,19 +8,35 @@ from zoneinfo import ZoneInfo
 
 from aiogram import F, Router
 from aiogram.filters import Command, CommandObject, CommandStart
-from aiogram.types import (CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup,
-                           Message, ReplyKeyboardRemove)
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+    ReplyKeyboardRemove,
+)
 
 from . import config, ddb, media, reactions, sheets
-from .keyboards import (BTN_BACK, BTN_CANCEL, BTN_DELETE, BTN_DEL_YES, BTN_D_OTHER, BTN_D_TODAY,
-                        BTN_D_TOMORROW, BTN_IAM, BTN_NEW, BTN_STATUS, BTN_TODAY, REMIND_MAP,
-                        SLOT_BUTTONS, STATUS_MAP, ActCB, LaterCB, MenuCB, MenuPickCB, SheetCB,
-                        SheetEditCB, SheetLaterCB, WizCB, cancel_reply_kb, confirm_del_reply_kb,
-                        day_reply_kb, later_kb, main_menu_kb, main_reply_kb, menu_slot_kb,
-                        menu_tasks_kb, reminder_kb, remind_reply_kb, sheet_later_kb, sheet_status_kb,
-                        slot_reply_kb, status_reply_kb, tasks_reply_kb, tracker_link_kb,
-                        wiz_category_kb, wiz_date_kb, wiz_time_kb)
-from .taskparse import parse_df_when, parse_task, wiz_deadline
+from .keyboards import (
+    ActCB,
+    LaterCB,
+    MenuCB,
+    MenuPickCB,
+    SheetCB,
+    SheetEditCB,
+    SheetLaterCB,
+    WizCB,
+    later_kb,
+    main_menu_kb,
+    menu_slot_kb,
+    menu_tasks_kb,
+    sheet_later_kb,
+    sheet_status_kb,
+    tracker_link_kb,
+    wiz_date_kb,
+    wiz_time_kb,
+)
+from .taskparse import parse_task, wiz_deadline
 
 router = Router()
 
@@ -827,7 +843,8 @@ async def cmd_calls(message: Message) -> None:
     for ev in raw:
         t = (ev.get("summary") or "").strip()
         if t and t.lower() not in seen:
-            seen.add(t.lower()); titles.append(t)
+            seen.add(t.lower())
+            titles.append(t)
     if not titles:
         await message.answer("На неделю вперёд коллов в календаре нет.")
         return

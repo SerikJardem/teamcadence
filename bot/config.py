@@ -10,6 +10,13 @@ except Exception:  # noqa: BLE001
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 DB_PATH = os.getenv("DB_PATH", "bot.db")
 TZ = os.getenv("TZ", "Asia/Almaty")
+RUNTIME_PLATFORM = os.getenv("RUNTIME_PLATFORM", "aws").strip().lower()
+STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "dynamodb").strip().lower()
+GCP_PROJECT = os.getenv("GCP_PROJECT", "hostai-505414").strip()
+FIRESTORE_DATABASE = os.getenv("FIRESTORE_DATABASE", "teamcadence").strip()
+FIRESTORE_COLLECTION = os.getenv("FIRESTORE_COLLECTION", "partitions").strip()
+SERVICE_MODE = os.getenv("SERVICE_MODE", "webhook").strip().lower()
+TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip()
 
 # Локальный аналог EventBridge cron 1 мин. Ставим чаще, чтобы не ждать.
 SCAN_INTERVAL_SECONDS = int(os.getenv("SCAN_INTERVAL_SECONDS", "15"))
