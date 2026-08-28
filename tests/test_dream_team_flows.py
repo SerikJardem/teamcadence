@@ -18,6 +18,94 @@ class FakeBot:
         return SimpleNamespace(message_id=len(self.messages))
 
 
+class FakeMessage:
+    def __init__(self, *, uid=388434409, photo=None, animation=None, sticker=None):
+        self.chat = SimpleNamespace(type="supergroup", id=GID)
+        self.from_user = SimpleNamespace(id=uid)
+        self.photo = photo
+        self.animation = animation
+        self.sticker = sticker
+        self.reply_to_message = None
+        self.answers = []
+
+    async def answer(self, text, **kwargs):
+        self.answers.append((text, kwargs))
+
+
+@pytest.mark.asyncio
+async def test_setmedia_waits_for_and_saves_the_next_photo(monkeypatch):
+    wizard = {}
+    saved = []
+
+    monkeypatch.setattr(
+        handlers.ddb,
+        "wiz_set",
+        lambda gid, uid, **fields: wizard.update({"gid": gid, "uid": uid, **fields}),
+    )
+    monkeypatch.setattr(handlers.ddb, "get_wiz", lambda gid, uid: dict(wizard))
+    monkeypatch.setattr(handlers.ddb, "del_wiz", lambda gid, uid: wizard.clear())
+    monkeypatch.setattr(
+        handlers.media,
+        "set_media",
+        lambda gid, event, kind, ref: saved.append((gid, event, kind, ref)),
+    )
+
+    command_message = FakeMessage()
+    await handlers.cmd_setmedia(
+        command_message,
+        SimpleNamespace(args="push_morning"),
+    )
+
+    assert wizard["step"] == "media_event"
+    assert wizard["media_target"] == "push_morning"
+    assert "следующее фото" in command_message.answers[-1][0].lower()
+    assert await handlers._pending_media_active(command_message) is True
+
+    photo_message = FakeMessage(photo=[SimpleNamespace(file_id="small"), SimpleNamespace(file_id="large")])
+    await handlers.on_pending_media(photo_message)
+
+    assert saved == [(GID, "push_morning", "photo", "large")]
+    assert wizard == {}
+    assert "сохранено" in photo_message.answers[-1][0].lower()
+    assert await handlers._pending_media_active(photo_message) is False
+
+
+@pytest.mark.asyncio
+async def test_setcallmedia_waits_for_and_saves_the_next_animation(monkeypatch):
+    wizard = {}
+    saved = []
+
+    monkeypatch.setattr(
+        handlers.ddb,
+        "wiz_set",
+        lambda gid, uid, **fields: wizard.update({"gid": gid, "uid": uid, **fields}),
+    )
+    monkeypatch.setattr(handlers.ddb, "get_wiz", lambda gid, uid: dict(wizard))
+    monkeypatch.setattr(handlers.ddb, "del_wiz", lambda gid, uid: wizard.clear())
+    monkeypatch.setattr(
+        handlers.media,
+        "set_call_media",
+        lambda gid, title, kind, ref: saved.append((gid, title, kind, ref)),
+    )
+
+    command_message = FakeMessage()
+    await handlers.cmd_setcallmedia(
+        command_message,
+        SimpleNamespace(args="Sprint planning"),
+    )
+
+    assert wizard["step"] == "media_call"
+    assert wizard["media_target"] == "Sprint planning"
+    assert "следующее фото" in command_message.answers[-1][0].lower()
+
+    animation_message = FakeMessage(animation=SimpleNamespace(file_id="gif-file-id"))
+    await handlers.on_pending_media(animation_message)
+
+    assert saved == [(GID, "Sprint planning", "animation", "gif-file-id")]
+    assert wizard == {}
+    assert "сохранено" in animation_message.answers[-1][0].lower()
+
+
 @pytest.mark.asyncio
 async def test_new_task_confirmation_links_to_tracker(monkeypatch):
     monkeypatch.setattr(handlers.ddb, "now_ts", lambda: 1_700_000_000)

@@ -747,6 +747,7 @@ async def cmd_setmedia(message: Message, command: CommandObject) -> None:
         return
     if rest.lower() in ("off", "clear", "-", "убрать"):
         media.clear_media(gid, event)
+        ddb.del_wiz(gid, message.from_user.id)
         await message.answer(f"Медиа для «{config.MEDIA_EVENTS[event]}» убрано.")
         return
     got = _extract_media(message)
@@ -755,12 +756,16 @@ async def cmd_setmedia(message: Message, command: CommandObject) -> None:
     elif rest.startswith("http"):
         kind, ref = ("animation" if rest.lower().split("?")[0].endswith(".gif") else "photo"), rest
     else:
+        ddb.wiz_set(gid, message.from_user.id, step="media_event", media_target=event)
         await message.answer(
-            f"Как задать медиа для «{config.MEDIA_EVENTS[event]}»:\n"
-            f"• пришли фото/гиф <b>в ответ</b> на /setmedia {event}, или\n"
+            f"Отправь следующее фото/гиф/стикер — сохраню его для "
+            f"«{config.MEDIA_EVENTS[event]}».\n"
+            f"Также можно:\n"
+            f"• ответить фото/гиф на /setmedia {event}, или\n"
             f"• /setmedia {event} https://ссылка.jpg|gif\n"
             f"• убрать: /setmedia {event} off", parse_mode="HTML")
         return
+    ddb.del_wiz(gid, message.from_user.id)
     media.set_media(gid, event, kind, ref)
     await message.answer(f"✅ Медиа для «{config.MEDIA_EVENTS[event]}» сохранено ({kind}).")
 
@@ -805,18 +810,65 @@ async def cmd_setcallmedia(message: Message, command: CommandObject) -> None:
     tail = kw.rsplit(" ", 1)
     if len(tail) == 2 and tail[1].lower() in ("off", "убрать", "-"):
         media.clear_call_media(gid, tail[0])
+        ddb.del_wiz(gid, message.from_user.id)
         await message.answer(f"Фото созвона «{tail[0]}» убрано.")
         return
     got = _extract_media(message)
     if not got:
+        ddb.wiz_set(gid, message.from_user.id, step="media_call", media_target=kw)
         await message.answer(
-            f"Пришли фото/гиф/стикер <b>в ответ</b> на /setcallmedia {kw}", parse_mode="HTML")
+            f"Отправь следующее фото/гиф/стикер — сохраню его для созвона "
+            f"«{html.escape(kw)}». Можно также ответить медиа на "
+            f"<code>/setcallmedia {html.escape(kw)}</code>.", parse_mode="HTML")
         return
     kind, ref = got
+    ddb.del_wiz(gid, message.from_user.id)
     media.set_call_media(gid, kw, kind, ref)
     await message.answer(
         f"✅ Фото для созвона «{kw}» сохранено ({kind}). "
         "Придёт, когда название события календаря содержит эту фразу.")
+
+
+async def _pending_media_active(message: Message) -> bool:
+    gid = _resolve_gid(message)
+    if gid is None:
+        return False
+    wiz = ddb.get_wiz(gid, message.from_user.id)
+    if not wiz or wiz.get("step") not in ("media_event", "media_call"):
+        return False
+    ttl = int(wiz.get("ttl") or 0)
+    if ttl and ttl <= ddb.now_ts():
+        ddb.del_wiz(gid, message.from_user.id)
+        return False
+    return True
+
+
+@router.message(F.photo | F.animation | F.sticker, _pending_media_active)
+async def on_pending_media(message: Message) -> None:
+    gid = _resolve_gid(message)
+    uid = message.from_user.id
+    wiz = ddb.get_wiz(gid, uid) or {}
+    got = _extract_media(message)
+    target = (wiz.get("media_target") or "").strip()
+    step = wiz.get("step")
+    if not got or not target:
+        ddb.del_wiz(gid, uid)
+        await message.answer("Не удалось прочитать медиа. Запусти настройку ещё раз.")
+        return
+    kind, ref = got
+    if step == "media_event" and target in config.MEDIA_EVENTS:
+        media.set_media(gid, target, kind, ref)
+        label = config.MEDIA_EVENTS[target]
+        answer = f"✅ Медиа для «{label}» сохранено ({kind})."
+    elif step == "media_call":
+        media.set_call_media(gid, target, kind, ref)
+        answer = f"✅ Фото для созвона «{target}» сохранено ({kind})."
+    else:
+        ddb.del_wiz(gid, uid)
+        await message.answer("Настройка медиа устарела. Запусти команду ещё раз.")
+        return
+    ddb.del_wiz(gid, uid)
+    await message.answer(answer)
 
 
 @router.message(Command("calls"))
