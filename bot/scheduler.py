@@ -101,7 +101,14 @@ def _match_standup(title) -> bool:
 
 async def _send_standup(bot: Bot, rem, now: int) -> None:
     """Перед StandUP запросить статус только у создавших задачи на сегодня."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
     gid, rid = rem["gid"], rem["rid"]
+    start = rem.get("task_deadline") or now
+    week = datetime.fromtimestamp(start, ZoneInfo(config.TZ)).isocalendar().week
+    week_emoji = "".join(f"{digit}\ufe0f\u20e3" for digit in str(week))
+    week_label = f"<b>W</b> {week_emoji}"
     dest = ddb.dest_for_kind(gid, "work")
     try:
         for key, slot in ddb.list_settings(gid, "iam:").items():
@@ -122,7 +129,7 @@ async def _send_standup(bot: Bot, rem, now: int) -> None:
             for task in tasks:
                 groups.setdefault((task["row"], task["status_col"]), []).append(task)
             for (row, col), items in groups.items():
-                lines = [f"📊 {_mention(uid, f'engnr {slot}')}, отметь статус задач:"]
+                lines = [week_label, f"📊 {_mention(uid, f'engnr {slot}')}, отметь статус задач:"]
                 lines.extend(f"• {html.escape(item['text'])}" for item in items)
                 kb = sheet_status_kb(gid, row, col, items[0]["line"])
                 if dest:

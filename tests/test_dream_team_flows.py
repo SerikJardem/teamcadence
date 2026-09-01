@@ -190,13 +190,17 @@ async def test_standup_prompts_only_creators_with_task_status_buttons(monkeypatc
 
     monkeypatch.setattr(scheduler.sheets, "tracker_today_tasks", today_tasks)
     bot = FakeBot()
-    rem = {"gid": GID, "rid": "standup-1", "task_deadline": 1_700_000_000}
+    standup_at = int(
+        datetime(2026, 9, 1, 17, 30, tzinfo=ZoneInfo(config.TZ)).timestamp()
+    )
+    rem = {"gid": GID, "rid": "standup-1", "task_deadline": standup_at}
 
-    await scheduler._send_standup(bot, rem, 1_700_000_000)
+    await scheduler._send_standup(bot, rem, standup_at - 30 * 60)
 
     assert len(bot.messages) == 1
     chat_id, text, kwargs = bot.messages[0]
     assert chat_id == GID
+    assert text.startswith("<b>W</b> 3️⃣6️⃣\n")
     assert "Собрать релиз" in text and "Проверить логи" in text
     assert "StandUP через" not in text
     assert "388434409" in text
