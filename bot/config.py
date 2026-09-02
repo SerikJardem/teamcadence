@@ -88,13 +88,11 @@ MEDIA_EVENTS = {
     "top_aura":     "топ по ауре (в дайджесте)",
 }
 
-# Плановые пуши по времени (локальное HH:MM). Фолбэк-времена; можно переопределить
-# per-тенант настройкой pushtime:<event>. Картинку события задаёшь /setmedia <event>.
-# Пуш срабатывает только если для события задана картинка (иначе тишина).
+# Один плановый мем в день (локальное HH:MM). Фолбэк можно переопределить
+# per-тенант настройкой pushtime:<event>. Картинку задаёшь /setmedia <event>
+# (или любым из push_create / push_missing / push_morning).
 PUSH_SCHEDULE = {
-    "push_morning": "09:00",
-    "push_create":  "09:30",
-    "push_missing": "10:30",
+    "push_create": "10:00",
 }
 
 CALENDAR_LEAD_MINUTES = int(os.getenv("CALENDAR_LEAD_MINUTES", "10"))

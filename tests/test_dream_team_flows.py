@@ -134,18 +134,18 @@ async def test_new_task_confirmation_links_to_tracker(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_1030_missing_tasks_sends_configured_meme_not_text(monkeypatch):
-    now_hhmm = datetime.now(ZoneInfo(config.TZ)).strftime("%H:%M")
-    monkeypatch.setattr(config, "PUSH_SCHEDULE", {"push_missing": now_hhmm})
+async def test_1000_task_push_sends_one_meme_with_week_caption(monkeypatch):
+    now = datetime.now(ZoneInfo(config.TZ))
+    now_hhmm = now.strftime("%H:%M")
+    week_emoji = "".join(f"{digit}\ufe0f\u20e3" for digit in str(now.isocalendar().week))
+    expected_caption = f"W {week_emoji} - напиши задачу:"
+
+    monkeypatch.setattr(config, "PUSH_SCHEDULE", {"push_create": now_hhmm})
     monkeypatch.setattr(scheduler.ddb, "list_tenants", lambda: [GID])
     monkeypatch.setattr(scheduler.ddb, "dest_for_kind", lambda gid, kind: (GID, 23))
     monkeypatch.setattr(scheduler.ddb, "get_setting", lambda *args: "")
     monkeypatch.setattr(scheduler.ddb, "set_setting", lambda *args: None)
 
-    async def missing(_gid):
-        return True
-
-    monkeypatch.setattr(scheduler, "_someone_without_tasks", missing)
     meme = ("photo", "telegram-file-id")
     monkeypatch.setattr(
         scheduler.media,
@@ -162,8 +162,15 @@ async def test_1030_missing_tasks_sends_configured_meme_not_text(monkeypatch):
 
     await scheduler.scan_pushes(bot)
 
-    assert sent_media == [(GID, 23, meme, {"caption": None, "reply_markup": None, "parse_mode": None})]
+    assert sent_media == [(
+        GID, 23, meme,
+        {"caption": expected_caption, "reply_markup": None, "parse_mode": None},
+    )]
     assert bot.messages == []
+
+
+def test_default_push_schedule_is_single_10am():
+    assert config.PUSH_SCHEDULE == {"push_create": "10:00"}
 
 
 @pytest.mark.asyncio

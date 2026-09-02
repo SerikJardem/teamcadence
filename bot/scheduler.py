@@ -24,6 +24,15 @@ def _mention(user_id: int, name: str | None) -> str:
     return f'<a href="tg://user?id={user_id}">{safe}</a>'
 
 
+def _week_emoji(when=None) -> str:
+    """ISO-неделя цифрами-эмодзи: 35 -> 3️⃣5️⃣."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    dt = when or datetime.now(ZoneInfo(config.TZ))
+    return "".join(f"{digit}\ufe0f\u20e3" for digit in str(dt.isocalendar().week))
+
+
 def _mins(delta_s: int) -> str:
     m = round(delta_s / 60)
     if m <= 0:
@@ -106,9 +115,8 @@ async def _send_standup(bot: Bot, rem, now: int) -> None:
 
     gid, rid = rem["gid"], rem["rid"]
     start = rem.get("task_deadline") or now
-    week = datetime.fromtimestamp(start, ZoneInfo(config.TZ)).isocalendar().week
-    week_emoji = "".join(f"{digit}\ufe0f\u20e3" for digit in str(week))
-    week_label = f"<b>W</b> {week_emoji}"
+    week_dt = datetime.fromtimestamp(start, ZoneInfo(config.TZ))
+    week_label = f"<b>W</b> {_week_emoji(week_dt)}"
     dest = ddb.dest_for_kind(gid, "work")
     try:
         for key, slot in ddb.list_settings(gid, "iam:").items():
@@ -272,16 +280,31 @@ async def scan_cadence(bot: Bot) -> None:
                 log.exception("Каденс: ошибка пинга %s", name)
 
 
+def _push_media(gid: int, event: str):
+    """Мем для планового пуша: сначала событие из расписания, потом соседние ключи."""
+    m = media.get_media(gid, event)
+    if m:
+        return m
+    for fallback in ("push_create", "push_missing", "push_morning"):
+        if fallback == event:
+            continue
+        m = media.get_media(gid, fallback)
+        if m:
+            return m
+    return None
+
+
 async def scan_pushes(bot: Bot) -> None:
-    """Плановые пуши по времени (config.PUSH_SCHEDULE, локальное HH:MM).
-    Шлём картинку события в work-топик. Время можно переопределить настройкой
-    pushtime:<event>. Пуш срабатывает только если картинка события задана."""
+    """Один плановый мем в work-топик (config.PUSH_SCHEDULE, локальное HH:MM).
+    Время можно переопределить настройкой pushtime:<event>. Картинка обязательна;
+    подпись — «W <неделя> - напиши задачу:»."""
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
     now = datetime.now(ZoneInfo(config.TZ))
     hhmm = now.strftime("%H:%M")
     today = now.strftime("%Y-%m-%d")
+    caption = f"W {_week_emoji(now)} - напиши задачу:"
 
     for gid in ddb.list_tenants():
         dest = ddb.dest_for_kind(gid, "work")
@@ -293,15 +316,12 @@ async def scan_pushes(bot: Bot) -> None:
                 continue
             if ddb.get_setting(gid, f"pushlast:{event}") == f"{today} {hhmm}":
                 continue
-            # push_missing: шлём только если у кого-то из привязанных НЕТ задач сегодня
-            if event == "push_missing" and not await _someone_without_tasks(gid):
-                continue
-            m = media.get_media(gid, event)
+            m = _push_media(gid, event)
             if not m:
                 continue  # плановый пуш без настроенного мема не заменяем текстом
             ddb.set_setting(gid, f"pushlast:{event}", f"{today} {hhmm}")
             try:
-                await _emit(bot, dest[0], dest[1], m, None, None)
+                await _emit(bot, dest[0], dest[1], m, caption, None)
             except Exception:  # noqa: BLE001
                 log.exception("Плановый пуш %s: ошибка (tenant %s)", event, gid)
 
