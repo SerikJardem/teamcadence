@@ -88,11 +88,12 @@ MEDIA_EVENTS = {
     "top_aura":     "топ по ауре (в дайджесте)",
 }
 
-# Один плановый мем в день (локальное HH:MM). Фолбэк можно переопределить
-# per-тенант настройкой pushtime:<event>. Картинку задаёшь /setmedia <event>
-# (или любым из push_create / push_missing / push_morning).
+# Один плановый мем в день в work-топике («Задачки»), локальное HH:MM.
+# Время можно переопределить настройкой pushtime:push_create.
+# Картинку задаёшь /setmedia push_create (или push_missing / push_morning).
+# Коллы (calls-топик + calendar memes) этим расписанием не трогаем.
 PUSH_SCHEDULE = {
-    "push_create": "10:00",
+    "push_create": "09:30",
 }
 
 CALENDAR_LEAD_MINUTES = int(os.getenv("CALENDAR_LEAD_MINUTES", "10"))

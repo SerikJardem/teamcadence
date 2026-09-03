@@ -134,17 +134,32 @@ async def test_new_task_confirmation_links_to_tracker(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_1000_task_push_sends_one_meme_with_week_caption(monkeypatch):
+async def test_0930_task_push_sends_one_meme_to_work_topic_with_week_caption(monkeypatch):
     now = datetime.now(ZoneInfo(config.TZ))
     now_hhmm = now.strftime("%H:%M")
+    today = now.strftime("%Y-%m-%d")
     week_emoji = "".join(f"{digit}\ufe0f\u20e3" for digit in str(now.isocalendar().week))
     expected_caption = f"W {week_emoji} - напиши задачу:"
 
     monkeypatch.setattr(config, "PUSH_SCHEDULE", {"push_create": now_hhmm})
     monkeypatch.setattr(scheduler.ddb, "list_tenants", lambda: [GID])
-    monkeypatch.setattr(scheduler.ddb, "dest_for_kind", lambda gid, kind: (GID, 23))
-    monkeypatch.setattr(scheduler.ddb, "get_setting", lambda *args: "")
-    monkeypatch.setattr(scheduler.ddb, "set_setting", lambda *args: None)
+    dest_kinds = []
+
+    def dest_for_kind(gid, kind):
+        dest_kinds.append(kind)
+        return (GID, 23)
+
+    settings = {}
+
+    def get_setting(gid, key):
+        return settings.get((gid, key), "")
+
+    def set_setting(gid, key, value):
+        settings[(gid, key)] = value
+
+    monkeypatch.setattr(scheduler.ddb, "dest_for_kind", dest_for_kind)
+    monkeypatch.setattr(scheduler.ddb, "get_setting", get_setting)
+    monkeypatch.setattr(scheduler.ddb, "set_setting", set_setting)
 
     meme = ("photo", "telegram-file-id")
     monkeypatch.setattr(
@@ -161,16 +176,20 @@ async def test_1000_task_push_sends_one_meme_with_week_caption(monkeypatch):
     bot = FakeBot()
 
     await scheduler.scan_pushes(bot)
+    await scheduler.scan_pushes(bot)  # повтор в ту же минуту — без второго мема
 
+    assert dest_kinds == ["work", "work"]
+    assert "call" not in dest_kinds
     assert sent_media == [(
         GID, 23, meme,
         {"caption": expected_caption, "reply_markup": None, "parse_mode": None},
     )]
+    assert settings[(GID, "pushlast:tasks_daily")] == today
     assert bot.messages == []
 
 
-def test_default_push_schedule_is_single_10am():
-    assert config.PUSH_SCHEDULE == {"push_create": "10:00"}
+def test_default_push_schedule_is_single_0930_in_tasks():
+    assert config.PUSH_SCHEDULE == {"push_create": "09:30"}
 
 
 @pytest.mark.asyncio

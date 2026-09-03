@@ -115,8 +115,9 @@ async def _send_standup(bot: Bot, rem, now: int) -> None:
 
     gid, rid = rem["gid"], rem["rid"]
     start = rem.get("task_deadline") or now
-    week_dt = datetime.fromtimestamp(start, ZoneInfo(config.TZ))
-    week_label = f"<b>W</b> {_week_emoji(week_dt)}"
+    week = datetime.fromtimestamp(start, ZoneInfo(config.TZ)).isocalendar().week
+    week_emoji = "".join(f"{digit}\ufe0f\u20e3" for digit in str(week))
+    week_label = f"<b>W</b> {week_emoji}"
     dest = ddb.dest_for_kind(gid, "work")
     try:
         for key, slot in ddb.list_settings(gid, "iam:").items():
@@ -281,7 +282,7 @@ async def scan_cadence(bot: Bot) -> None:
 
 
 def _push_media(gid: int, event: str):
-    """Мем для планового пуша: сначала событие из расписания, потом соседние ключи."""
+    """Мем только для планового пуша в Задачки (work). Коллы — через get_call_media."""
     m = media.get_media(gid, event)
     if m:
         return m
@@ -295,9 +296,9 @@ def _push_media(gid: int, event: str):
 
 
 async def scan_pushes(bot: Bot) -> None:
-    """Один плановый мем в work-топик (config.PUSH_SCHEDULE, локальное HH:MM).
-    Время можно переопределить настройкой pushtime:<event>. Картинка обязательна;
-    подпись — «W <неделя> - напиши задачу:»."""
+    """Ровно один мем в день в work-топик («Задачки»), не в Коллы.
+    Время — config.PUSH_SCHEDULE / pushtime:<event>. Подпись с ISO-неделей
+    эмодзи: «W 3️⃣5️⃣ - напиши задачу:». Календарные мемы коллов не затрагиваются."""
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
@@ -307,23 +308,27 @@ async def scan_pushes(bot: Bot) -> None:
     caption = f"W {_week_emoji(now)} - напиши задачу:"
 
     for gid in ddb.list_tenants():
+        # Явно work («Задачки»); calls-топик сюда никогда не пишем.
         dest = ddb.dest_for_kind(gid, "work")
         if not dest:
+            continue
+        # Один раз в сутки на тенанта — даже если в расписании несколько ключей.
+        if ddb.get_setting(gid, "pushlast:tasks_daily") == today:
             continue
         for event, default_time in config.PUSH_SCHEDULE.items():
             when = ddb.get_setting(gid, f"pushtime:{event}") or default_time
             if when != hhmm:
                 continue
-            if ddb.get_setting(gid, f"pushlast:{event}") == f"{today} {hhmm}":
-                continue
             m = _push_media(gid, event)
             if not m:
                 continue  # плановый пуш без настроенного мема не заменяем текстом
+            ddb.set_setting(gid, "pushlast:tasks_daily", today)
             ddb.set_setting(gid, f"pushlast:{event}", f"{today} {hhmm}")
             try:
                 await _emit(bot, dest[0], dest[1], m, caption, None)
             except Exception:  # noqa: BLE001
                 log.exception("Плановый пуш %s: ошибка (tenant %s)", event, gid)
+            break  # только один мем в Задачки за проход
 
 
 async def _someone_without_tasks(gid) -> bool:
