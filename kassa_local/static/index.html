@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gastroweek · касса</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="top">
+      <p class="brand">Gastroweek</p>
+      <h1>Отметьте продажу.</h1>
+      <p class="sub">Нажмите товар — в CSV добавится <code>1</code>, как в Google Sheet.</p>
+    </header>
+
+    <section id="grid" class="grid" aria-label="Товары"></section>
+
+    <section class="summary">
+      <div>
+        <span class="label">Всего продаж</span>
+        <strong id="grand">0</strong>
+      </div>
+      <div class="path" id="csvPath"></div>
+    </section>
+
+    <p id="toast" class="toast" hidden></p>
+
+    <footer class="actions">
+      <button type="button" id="resetBtn" class="ghost">Сбросить счётчики</button>
+      <a class="ghost link" href="/api/csv">Скачать CSV</a>
+    </footer>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

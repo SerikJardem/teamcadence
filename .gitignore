@@ -12,3 +12,4 @@ build/
 .migration/
 service-account*.json
 credentials*.json
+kassa_local/data/

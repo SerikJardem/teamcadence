@@ -220,6 +220,18 @@ Cloud Run получает секреты из Secret Manager:
 Переменные: `EVENT_SHEET_ID`, `EVENT_SHEET_TAB`, `EVENT_SALE_ITEMS`,
 `EVENT_SHEET_URL` (см. `.env.example`).
 
+### Локальная касса без Telegram (CSV)
+
+Та же логика кнопок и раскладка «товар + единицы `1`», но в браузере и в CSV:
+
+```bash
+chmod +x scripts/run_kassa_local.sh
+./scripts/run_kassa_local.sh
+```
+
+Открой http://127.0.0.1:8765 — клики пишут в `kassa_local/data/sales.csv`.
+Скачать CSV: кнопка на странице или `/api/csv`.
+
 ## Локальный запуск
 
 ```bash
@@ -239,6 +251,9 @@ bot/
   sheets.py             Tracker-HostAI в Google Sheets
   storage/firestore.py  хранение состояния в Firestore
   cloudrun.py            HTTP entrypoint для Cloud Run
+kassa_local/            локальная веб-касса → CSV (без Telegram)
+scripts/
+  run_kassa_local.sh    запуск локальной кассы
 .github/workflows/
   ci.yml                 проверки pull request и main без деплоя
 deploy/
