@@ -2,7 +2,6 @@ const gridEl = document.getElementById("grid");
 const grandEl = document.getElementById("grand");
 const csvPathEl = document.getElementById("csvPath");
 const toastEl = document.getElementById("toast");
-const resetBtn = document.getElementById("resetBtn");
 
 function showToast(text) {
   toastEl.hidden = false;
@@ -48,13 +47,5 @@ async function refresh() {
   const data = await res.json();
   render(data);
 }
-
-resetBtn.addEventListener("click", async () => {
-  if (!confirm("Обнулить все продажи в CSV?")) return;
-  const res = await fetch("/api/reset", { method: "POST" });
-  const data = await res.json();
-  render(data);
-  showToast("Счётчики сброшены");
-});
 
 refresh();

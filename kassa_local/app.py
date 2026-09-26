@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import store
@@ -52,8 +52,6 @@ async def api_sale(item: str):
 
 @app.get("/api/csv")
 async def download_csv():
-    from fastapi.responses import FileResponse
-
     if not CSV_PATH.exists():
         store.save_grid(CSV_PATH, store._ensure_grid(ITEMS))
     return FileResponse(
@@ -61,11 +59,3 @@ async def download_csv():
         media_type="text/csv",
         filename="gastroweek-sales.csv",
     )
-
-
-@app.post("/api/reset")
-async def api_reset():
-    """Wipe sale marks; keep item catalog rows."""
-    grid = store._ensure_grid(ITEMS)
-    store.save_grid(CSV_PATH, grid)
-    return JSONResponse({"ok": True, "items": store.totals(grid, ITEMS), "grand_total": 0})
