@@ -252,3 +252,22 @@ def menu_tasks_kb(tasks: list) -> InlineKeyboardMarkup:
             callback_data=MenuPickCB(row=t["row"], col=t["status_col"], line=t["line"]).pack())])
     rows.append([InlineKeyboardButton(text="⬅️ Назад", callback_data=MenuCB(action="home").pack())])
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+class SaleCB(CallbackData, prefix="sale"):
+    """Клик по товару в кассе мероприятия. idx — индекс в config.EVENT_SALE_ITEMS."""
+    idx: int
+
+
+def sale_kb() -> InlineKeyboardMarkup:
+    """Сетка 2×N как в примере «Отметьте рекламу.» — товары из EVENT_SALE_ITEMS."""
+    items = config.EVENT_SALE_ITEMS
+    rows = []
+    for i in range(0, len(items), 2):
+        pair = [InlineKeyboardButton(
+            text=items[i], callback_data=SaleCB(idx=i).pack())]
+        if i + 1 < len(items):
+            pair.append(InlineKeyboardButton(
+                text=items[i + 1], callback_data=SaleCB(idx=i + 1).pack()))
+        rows.append(pair)
+    return InlineKeyboardMarkup(inline_keyboard=rows)

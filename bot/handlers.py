@@ -2,6 +2,7 @@
 Тенант резолвится из chat_id группы; в callback_data тенант закодирован явно."""
 import asyncio
 import html
+import logging
 import re
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -16,12 +17,13 @@ from aiogram.types import (
     ReplyKeyboardRemove,
 )
 
-from . import config, ddb, media, reactions, sheets
+from . import config, ddb, event_sales, media, reactions, sheets
 from .keyboards import (
     ActCB,
     LaterCB,
     MenuCB,
     MenuPickCB,
+    SaleCB,
     SheetCB,
     SheetEditCB,
     SheetLaterCB,
@@ -30,6 +32,7 @@ from .keyboards import (
     main_menu_kb,
     menu_slot_kb,
     menu_tasks_kb,
+    sale_kb,
     sheet_later_kb,
     sheet_status_kb,
     tracker_link_kb,
@@ -39,6 +42,7 @@ from .keyboards import (
 from .taskparse import parse_task, wiz_deadline
 
 router = Router()
+log = logging.getLogger("handlers")
 
 _STATUS_LABEL = {"open": "🟡 open", "done": "✅ done", "skipped": "➖ skipped", "expired": "💀 expired"}
 
@@ -616,6 +620,9 @@ _HELP_TEXT = (
     "/calls — список коллов недели + у кого есть фото\n"
     "/setmedia событие — фото/гиф/стикер в ответ · /media — что задано\n"
     "/setcallmedia Название — фото на конкретный созвон\n\n"
+    "<b>Касса мероприятия</b>\n"
+    "/kassa — кнопки товаров → «1» в лист продаж\n"
+    "лист: EVENT_SHEET_ID (товары: Су-вид, Гриль, …)\n\n"
     "<b>Настройка</b>\n"
     "/cadence — времена пингов\n"
     "/settopic board|work|calls — топики (в нужном топике)\n"
@@ -626,6 +633,41 @@ _HELP_TEXT = (
 @router.message(Command("help"))
 async def cmd_help(message: Message) -> None:
     await message.answer(_HELP_TEXT, parse_mode="HTML")
+
+
+@router.message(Command("kassa", "sale"))
+async def cmd_kassa(message: Message) -> None:
+    """Панель кассы: 2 колонки кнопок товаров. Клик пишет «1» в EVENT_SHEET."""
+    if not config.EVENT_SHEET_ID:
+        await message.answer("Касса не настроена: задай EVENT_SHEET_ID.")
+        return
+    if not config.EVENT_SALE_ITEMS:
+        await message.answer("Список товаров пуст (EVENT_SALE_ITEMS).")
+        return
+    link = config.EVENT_SHEET_URL
+    text = (
+        "Отметьте продажу.\n"
+        f'<a href="{html.escape(link)}">Открыть лист</a>'
+    )
+    await message.answer(text, reply_markup=sale_kb(), parse_mode="HTML",
+                         disable_web_page_preview=True)
+
+
+@router.callback_query(SaleCB.filter())
+async def on_sale(cb: CallbackQuery, callback_data: SaleCB) -> None:
+    idx = callback_data.idx
+    items = config.EVENT_SALE_ITEMS
+    if idx < 0 or idx >= len(items):
+        await cb.answer("Неизвестный товар", show_alert=True)
+        return
+    item = items[idx]
+    try:
+        res = await asyncio.to_thread(event_sales.record_sale, item)
+    except Exception as exc:  # noqa: BLE001
+        log.exception("kassa: не записал продажу %s", item)
+        await cb.answer(f"Ошибка записи: {exc}", show_alert=True)
+        return
+    await cb.answer(f"✅ {item} · всего {res['total']}")
 
 
 @router.message(Command("menu"))

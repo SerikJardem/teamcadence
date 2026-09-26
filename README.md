@@ -207,6 +207,19 @@ Cloud Run получает секреты из Secret Manager:
 нужно создать новую Cloud Run revision, чтобы экземпляры получили актуальное
 значение.
 
+## Касса мероприятия (`/kassa`)
+
+Для учёта продаж на ивенте бот показывает сетку кнопок товаров
+(Су-вид, Гриль, Говядина, Фри, Улун, Яблоко). Каждый клик дописывает `1`
+в Google Sheet `EVENT_SHEET_ID` (колонка B — товар, с колонки C — продажи).
+
+1. Создай Telegram-топик/чат для кассы и добавь `@FoqusTeamBot`.
+2. Расшарь лист на SA-email бота как **Editor**.
+3. После деплоя отправь `/kassa` — появится панель «Отметьте продажу.»
+
+Переменные: `EVENT_SHEET_ID`, `EVENT_SHEET_TAB`, `EVENT_SALE_ITEMS`,
+`EVENT_SHEET_URL` (см. `.env.example`).
+
 ## Локальный запуск
 
 ```bash
@@ -221,6 +234,7 @@ cp .env.example .env
 ```text
 bot/
   handlers.py           Telegram-команды и callback handlers
+  event_sales.py        касса мероприятия → Google Sheet
   scheduler.py          reminders, status prompts и Calendar sync
   sheets.py             Tracker-HostAI в Google Sheets
   storage/firestore.py  хранение состояния в Firestore

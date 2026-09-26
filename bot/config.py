@@ -142,6 +142,25 @@ TRACKER_URL = os.getenv(
     f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/edit#gid=0",
 ).strip()
 
+# --- Касса мероприятия (кнопки → «1» в отдельный Google Sheet) ---
+# Лист должен быть расшарен на тот же SA-email, что и Tracker, как Editor.
+EVENT_SHEET_ID = os.getenv(
+    "EVENT_SHEET_ID",
+    "1X3we-5pUIJmLcabYlYy8SZOwS_g_2Epkhh5eiJdZJ6M",
+).strip()
+EVENT_SHEET_TAB = os.getenv("EVENT_SHEET_TAB", "").strip()  # пусто = первый лист
+EVENT_SALE_ITEMS = [
+    s.strip() for s in os.getenv(
+        "EVENT_SALE_ITEMS",
+        "Су-вид,Гриль,Говядина,Фри,Улун,Яблоко",
+    ).split(",")
+    if s.strip()
+]
+EVENT_SHEET_URL = os.getenv(
+    "EVENT_SHEET_URL",
+    f"https://docs.google.com/spreadsheets/d/{EVENT_SHEET_ID}/edit",
+).strip()
+
 # Каденс напоминаний по умолчанию (локальные времена HH:MM), если человеку не задан свой.
 # Свой каденс: /cadence <Имя> 10:00,15:00 -> settings cadence:<имя>.
 DEFAULT_CADENCE = [t.strip() for t in os.getenv("DEFAULT_CADENCE", "10:00,18:00").split(",") if t.strip()]
